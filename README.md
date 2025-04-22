@@ -20,7 +20,7 @@ This project is a **Spam or Ham Classifier** designed to distinguish between spa
 ## Installation
 1. Clone the repository:
     ```bash
-    git clone https://github.com/yourusername/spam-or-ham-classifier.git
+    git clone https://github.com/Yaniikku/aki-project.git
     ```
 
 ## Results
