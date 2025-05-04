@@ -3,6 +3,8 @@
 import re
 import matplotlib.pyplot as plt
 import seaborn as sns
+import hashlib
+import json
 from sklearn.metrics import classification_report, confusion_matrix
 
 
@@ -14,7 +16,8 @@ def clean_text(text):
     - Entfernt Sonderzeichen und Zahlen
     """
     text = text.lower()
-    text = re.sub(r'[^a-z\s]', '', text)
+    text = re.sub(r'\b\d{5,}\b', 'PHONENUMBER', text)  # NEU: ersetzt Telefonnummern
+    text = re.sub(r'[^a-z\s]', '', text)  # weiterhin alle Sonderzeichen raus
     return text
 
 
@@ -49,3 +52,7 @@ def predict_and_print(model, vectorizer, raw_text, label_names=["Ham", "Spam"]):
     pred = model.predict(vec)[0]
     print(f"\n📩 Nachricht: {raw_text}")
     print(f"📊 Vorhersage: {label_names[pred]}")
+
+def generate_config_hash(config):
+    config_str = json.dumps(config, sort_keys=True)
+    return hashlib.md5(config_str.encode()).hexdigest()[:8]

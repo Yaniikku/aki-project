@@ -6,6 +6,7 @@ __pycache__/
 # Ignore virtual environments
 venv/
 env/
+.venv/
 
 # Ignore VSCode settings
 .vscode/
@@ -13,6 +14,7 @@ env/
 # Ignore environment variables and secrets
 *.env
 *.env.*
+secrets.json
 
 # Ignore logs and temporary files
 *.log
@@ -21,3 +23,12 @@ env/
 
 # Ignore macOS system files
 .DS_Store
+
+# Ignore model output and experiment results
+results/
+*.joblib
+*.json
+*.csv
+
+# Ignore Jupyter Notebook metadata
+.ipynb_checkpoints/
