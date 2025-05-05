@@ -12,8 +12,6 @@ This project is a **Spam or Ham Classifier** designed to distinguish between spa
 ## Models and Techniques
 - **Naive Bayes Classifier**
 - **Support Vector Machines (SVM)**
-- **Logistic Regression**
-- **Random Forest**
 - **Deep Learning Models (e.g., LSTM, Transformers)**
 - Feature extraction using techniques like TF-IDF and word embeddings.
 
