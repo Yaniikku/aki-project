@@ -1,61 +1,84 @@
+import pandas as pd
 import torch
-from datasets import load_dataset
-from transformers import DistilBERTTokenizerFast, DistilBertForSequenceClassification, Trainer, TrainingArguments
-from sklearn.metrics import accuracy_score, precision_recall_fscore_support
-import numpy as np
+from torch.utils.data import DataLoader, Dataset
+from transformers import DistilBertTokenizer, DistilBertForSequenceClassification
+from torch.optim import AdamW
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import classification_report
+from tqdm import tqdm
 
-def compute_metrics(pred):
-    labels = pred.label_ids
-    preds = np.argmax(pred.predictions, axis=1)
-    precision, recall, f1, _ = precision_recall_fscore_support(labels, preds, average='binary')
-    acc = accuracy_score(labels, preds)
-    return {'accuracy': acc, 'precision': precision, 'recall': recall, 'f1': f1}
+# Device setup
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+use_amp = device.type == "cuda"  # Use mixed precision if on GPU
 
-def main():
-    # Load dataset
-    dataset = load_dataset("sms_spam")
-    dataset = dataset.rename_column("label", "labels")
-    dataset = dataset.class_encode_column("labels")
-    dataset = dataset.train_test_split(test_size=0.2)
+# Load and prepare data
+df = pd.read_csv('../data/spam.csv', encoding='latin-1')[['v1', 'v2']]
+df.columns = ['label', 'text']
+df['label'] = df['label'].map({'ham': 0, 'spam': 1})
 
-    # Load tokenizer and tokenize
-    tokenizer = DistilBERTTokenizerFast.from_pretrained('distilbert-base-uncased')
+train_texts, val_texts, train_labels, val_labels = train_test_split(
+    df['text'].tolist(), df['label'].tolist(), test_size=0.2, random_state=42
+)
 
-    def tokenize(example):
-        return tokenizer(example['sms'], truncation=True, padding=True)
+# Tokenizer
+tokenizer = DistilBertTokenizer.from_pretrained('distilbert-base-uncased')
 
-    tokenized = dataset.map(tokenize, batched=True)
+# Dataset class
+class SpamDataset(Dataset):
+    def __init__(self, texts, labels):
+        self.encodings = tokenizer(texts, truncation=True, padding=True, max_length=64, return_tensors='pt')
+        self.labels = torch.tensor(labels)
 
-    # Load model
-    model = DistilBertForSequenceClassification.from_pretrained("distilbert-base-uncased", num_labels=2)
+    def __len__(self): return len(self.labels)
 
-    # Training arguments
-    training_args = TrainingArguments(
-        output_dir="./results_transformer",
-        evaluation_strategy="epoch",
-        save_strategy="epoch",
-        per_device_train_batch_size=16,
-        per_device_eval_batch_size=64,
-        num_train_epochs=3,
-        weight_decay=0.01,
-        logging_dir='./logs',
-        logging_steps=10,
-    )
+    def __getitem__(self, idx):
+        item = {key: val[idx] for key, val in self.encodings.items()}
+        item['labels'] = self.labels[idx]
+        return item
 
-    trainer = Trainer(
-        model=model,
-        args=training_args,
-        train_dataset=tokenized["train"],
-        eval_dataset=tokenized["test"],
-        compute_metrics=compute_metrics,
-    )
+# Data Loaders
+train_dataset = SpamDataset(train_texts, train_labels)
+val_dataset = SpamDataset(val_texts, val_labels)
 
-    # Train
-    trainer.train()
+train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True)
+val_loader = DataLoader(val_dataset, batch_size=16)
 
-    # Evaluate
-    results = trainer.evaluate()
-    print("Final Evaluation:", results)
+# Model
+model = DistilBertForSequenceClassification.from_pretrained('distilbert-base-uncased', num_labels=2)
+model.to(device)
 
-if __name__ == "__main__":
-    main()
+# Freeze all but classifier layer
+for param in model.distilbert.parameters():
+    param.requires_grad = False
+
+# Optimizer
+optimizer = AdamW(model.parameters(), lr=2e-5)
+
+# Training loop (1 epoch + AMP)
+model.train()
+for epoch in range(1):
+    print(f"\nEpoch {epoch + 1}")
+    for batch in tqdm(train_loader):
+        batch = {k: v.to(device) for k, v in batch.items()}
+        optimizer.zero_grad()
+        with torch.cuda.amp.autocast(enabled=use_amp):
+            outputs = model(**batch)
+            loss = outputs.loss
+        loss.backward()
+        optimizer.step()
+
+# Evaluation
+model.eval()
+all_preds = []
+all_labels = []
+
+with torch.no_grad():
+    for batch in val_loader:
+        batch = {k: v.to(device) for k, v in batch.items()}
+        outputs = model(**batch)
+        preds = outputs.logits.argmax(dim=1).cpu()
+        labels = batch['labels'].cpu()
+        all_preds.extend(preds.numpy())
+        all_labels.extend(labels.numpy())
+
+print(classification_report(all_labels, all_preds))
