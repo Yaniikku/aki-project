@@ -1,14 +1,12 @@
 import itertools
 import json
 from pathlib import Path
-from datetime import datetime
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import precision_score, recall_score, f1_score
-from pathlib import Path
 
 from utils.utils import clean_text
 
@@ -21,12 +19,10 @@ PARAM_GRID = {
 }
 
 # === Daten laden & vorbereiten ===
-
-
 data_path = Path(__file__).resolve().parent.parent / "aki-project" / "data" / "SMSSpamCollection"
 df = pd.read_csv(data_path, sep="\t", header=None, names=["label", "text"])
-
 df["clean_text"] = df["text"].apply(clean_text)
+
 label_encoder = LabelEncoder()
 df["label_encoded"] = label_encoder.fit_transform(df["label"])
 
@@ -39,6 +35,10 @@ X_train, X_test, y_train, y_test = train_test_split(
 
 results_path = Path("results")
 results_path.mkdir(exist_ok=True)
+
+# === Initialisierung für beste Konfiguration ===
+best_overall_f1 = 0
+best_metrics = None
 
 # === Alle Kombinationen durchprobieren ===
 combinations = list(itertools.product(
@@ -80,11 +80,9 @@ for idx, (use_ngrams, ngram_range, max_features, alpha) in enumerate(combination
     precision = precision_score(y_test, y_pred_final)
     recall = recall_score(y_test, y_pred_final)
 
-    # === Speichern ===
-    model_version = f"grid_{idx:03d}"
     metrics = {
         "model": "Naive Bayes",
-        "model_version": model_version,
+        "model_version": "naive_best",
         "threshold": best_thresh,
         "precision": round(precision, 4),
         "recall": round(recall, 4),
@@ -98,7 +96,13 @@ for idx, (use_ngrams, ngram_range, max_features, alpha) in enumerate(combination
         }
     }
 
-    with open(results_path / f"metrics_{model_version}.json", "w") as f:
-        json.dump(metrics, f, indent=4)
+    # === Nur beste Konfiguration merken ===
+    if best_metrics is None or metrics["f1_score"] > best_overall_f1:
+        best_overall_f1 = metrics["f1_score"]
+        best_metrics = metrics
 
-    print(f"✅ Saved: metrics_{model_version}.json | F1: {best_f1:.3f}")
+# === Nach der Schleife: Beste Metrik speichern ===
+with open(results_path / "metrics_naive_best.json", "w") as f:
+    json.dump(best_metrics, f, indent=4)
+
+print(f"\n🏆 Beste Konfiguration gespeichert als metrics_naive_best.json (F1: {best_overall_f1:.3f})")

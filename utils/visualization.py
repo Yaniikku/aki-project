@@ -2,56 +2,61 @@ import os
 import json
 import matplotlib.pyplot as plt
 
-
-def plot_f1_scores_from_results(results_folder="results", save_path=None):
+def plot_metrics_separately(results_folder="results", save_prefix="results/metric_"):
     """
-    Lädt alle metrics_*.json-Dateien im angegebenen Ordner und visualisiert
-    die F1-Scores sortiert nach Höhe.
-
-    :param results_folder: Ordner mit metrics_*.json-Dateien
-    :param save_path: Optionaler Pfad, um das Diagramm als PNG zu speichern
+    Lädt alle metrics_*.json-Dateien und erzeugt drei getrennte Diagramme:
+    - F1-Score
+    - Precision
+    - Recall
+    Die Y-Achse beginnt bei 0.8 für bessere Unterscheidung.
     """
+
     entries = []
 
-    # Alle Metrik-Dateien einlesen
+    # Dateien laden
     for filename in os.listdir(results_folder):
         if filename.startswith("metrics_") and filename.endswith(".json"):
             with open(os.path.join(results_folder, filename), "r") as f:
                 data = json.load(f)
+                print(f"✅ Datei geladen: {filename}")
+                print(f"🔹 Modell: {data.get('model')} {data.get('model_version')}")
+                print(f"🔹 F1: {data.get('f1_score')}, Precision: {data.get('precision')}, Recall: {data.get('recall')}")
                 label = f"{data['model']} {data['model_version']}"
-                f1 = data["f1_score"]
-                entries.append((label, f1))
+                entries.append({
+                    "label": label,
+                    "f1": data["f1_score"],
+                    "precision": data["precision"],
+                    "recall": data["recall"]
+                })
 
     if not entries:
         print("⚠️ Keine Ergebnisse gefunden.")
         return
 
-    # Sortieren nach F1 absteigend
-    entries.sort(key=lambda x: x[1], reverse=True)
-    labels, f1_scores = zip(*entries)
+    # Drei Diagramme erzeugen
+    for metric in ["f1", "precision", "recall"]:
+        sorted_entries = sorted(entries, key=lambda x: x[metric], reverse=True)
+        labels = [entry["label"] for entry in sorted_entries]
+        values = [entry[metric] for entry in sorted_entries]
 
-    # Balkendiagramm zeichnen
-    plt.figure(figsize=(10, 6))
-    bars = plt.bar(labels, f1_scores, color='skyblue')
-    plt.ylim(0.85, 1.0)
-    plt.ylabel("F1-Score")
-    plt.title("Modellvergleich: F1-Score (sortiert)")
+        plt.figure(figsize=(10, 5))
+        bars = plt.bar(labels, values, color='skyblue')
+        plt.ylim(0.8, 1.05)  # Y-Achse bei 0.8 starten
+        plt.ylabel(metric.capitalize())
+        plt.title(f"Modellvergleich: {metric.capitalize()}")
+        plt.xticks(rotation=45, ha='right')
 
-    for bar, f1 in zip(bars, f1_scores):
-        plt.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.005,
-                 f"{f1:.3f}", ha='center', va='bottom')
+        for bar, value in zip(bars, values):
+            plt.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.005,
+                     f"{value:.3f}", ha='center', va='bottom')
 
-    plt.xticks(rotation=45)
-    plt.tight_layout()
+        plt.tight_layout()
 
-    # Optional speichern
-    if save_path:
-        plt.savefig(save_path)
-        print(f"💾 Diagramm gespeichert unter: {save_path}")
-
-    plt.show()
+        file_path = f"{save_prefix}{metric}.png"
+        plt.savefig(file_path)
+        print(f"💾 Diagramm gespeichert unter: {file_path}")
+        plt.show()
 
 
 if __name__ == "__main__":
-    # Beispiel: Diagramm anzeigen & speichern
-    plot_f1_scores_from_results(save_path="results/f1_comparison.png")
+    plot_metrics_separately()
