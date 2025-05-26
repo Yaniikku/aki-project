@@ -24,8 +24,10 @@ from config import MODEL_VERSION, USE_NGRAMS, NGRAM_RANGE, TFIDF_MAX_FEATURES, A
 
 def load_dataset(filepath=None):
     if filepath is None:
-        filepath = Path(__file__).parent.parent / "data" / "SMSSpamCollection"
-    df = pd.read_csv(filepath, sep='\t', header=None, names=["label", "text"])
+        filepath = Path(__file__).parent.parent / "data" / "super_sms_dataset.csv"
+    # Use correct encoding and column names
+    df = pd.read_csv(filepath, encoding="latin1")
+    df = df.rename(columns={"SMSes": "text", "Labels": "label"})
     df['clean_text'] = df['text'].apply(clean_text)
     return df
 
@@ -59,8 +61,6 @@ def extract_additional_features(text_series):
     })
 
 
-
- 
 def optimize_threshold(y_true, y_probs):
     best_threshold = 0.5
     best_f1 = 0
@@ -84,6 +84,9 @@ def optimize_threshold(y_true, y_probs):
 if __name__ == "__main__":
     print("📂 Loading dataset...")
     df = load_dataset()
+
+    # Use only 30% of the dataset for training/testing
+    df = df.sample(frac=0.3, random_state=42).reset_index(drop=True)
 
     print("✂️ Splitting data...")
     df_train, df_test = train_test_split(df, test_size=0.2, random_state=42)
