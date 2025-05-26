@@ -21,7 +21,7 @@ def plot_metrics_separately(results_folder="results", save_prefix="results/metri
                 print(f"✅ Datei geladen: {filename}")
                 print(f"🔹 Modell: {data.get('model')} {data.get('model_version')}")
                 print(f"🔹 F1: {data.get('f1_score')}, Precision: {data.get('precision')}, Recall: {data.get('recall')}")
-                label = f"{data['model']} {data['model_version']}"
+                label = f"{data['model']}"
                 entries.append({
                     "label": label,
                     "f1": data["f1_score"],
@@ -33,15 +33,20 @@ def plot_metrics_separately(results_folder="results", save_prefix="results/metri
         print("⚠️ Keine Ergebnisse gefunden.")
         return
 
+    # Farben für die Balken (wird bei Bedarf wiederholt)
+    base_colors = ['cornflowerblue', 'salmon', 'mediumseagreen', 'goldenrod', 'orchid', 'darkorange', 'slateblue', 'crimson']
+
     # Drei Diagramme erzeugen
     for metric in ["f1", "precision", "recall"]:
         sorted_entries = sorted(entries, key=lambda x: x[metric], reverse=True)
         labels = [entry["label"] for entry in sorted_entries]
         values = [entry[metric] for entry in sorted_entries]
+        # Farben passend zur Anzahl der Balken
+        colors = (base_colors * ((len(labels) // len(base_colors)) + 1))[:len(labels)]
 
         plt.figure(figsize=(10, 5))
-        bars = plt.bar(labels, values, color='skyblue')
-        plt.ylim(0.8, 1.05)  # Y-Achse bei 0.8 starten
+        bars = plt.bar(labels, values, color=colors)
+        plt.ylim(0.9, 1.05)  # Y-Achse bei 0.9 starten
         plt.ylabel(metric.capitalize())
         plt.title(f"Modellvergleich: {metric.capitalize()}")
         plt.xticks(rotation=45, ha='right')

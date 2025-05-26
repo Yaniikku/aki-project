@@ -19,8 +19,9 @@ PARAM_GRID = {
 }
 
 # === Daten laden & vorbereiten ===
-data_path = Path(__file__).resolve().parent.parent / "aki-project" / "data" / "SMSSpamCollection"
-df = pd.read_csv(data_path, sep="\t", header=None, names=["label", "text"])
+data_path = Path(__file__).resolve().parent.parent / "aki-project" / "data" / "super_sms_dataset.csv"
+df = pd.read_csv(data_path, encoding="latin1")
+df = df.rename(columns={"SMSes": "text", "Labels": "label"})
 df["clean_text"] = df["text"].apply(clean_text)
 
 label_encoder = LabelEncoder()

@@ -24,15 +24,15 @@ from config import MODEL_VERSION, USE_NGRAMS, NGRAM_RANGE, TFIDF_MAX_FEATURES, A
 def load_dataset(filepath=None):
     """
     Loads the dataset from the specified file path.
-    If no path is provided, it defaults to 'data/SMSSpamCollection'.
+    If no path is provided, it defaults to 'data/super_sms_dataset.csv'.
     The function renames columns, selects relevant ones, and applies text cleaning.
     """
     if filepath is None:
-        filepath = Path(__file__).parent.parent / "data" / "SMSSpamCollection"
-    # Load the dataset with tab-separated values
-    df = pd.read_csv(filepath, sep='\t', header=None, names=["label", "text"])
-    # Keep only the relevant columns
-    df = df[["label", "text"]]
+        filepath = Path(__file__).parent.parent / "data" / "super_sms_dataset.csv"
+    # Load the dataset with comma-separated values
+    df = pd.read_csv(filepath)
+    # Rename columns to match expected names
+    df = df.rename(columns={"SMSes": "text", "Labels": "label"})
     # Apply text cleaning to the 'text' column
     df['clean_text'] = df['text'].apply(clean_text)
     return df

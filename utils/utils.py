@@ -1,5 +1,3 @@
-# utils.py
-
 import re
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -7,19 +5,20 @@ import hashlib
 import json
 from sklearn.metrics import classification_report, confusion_matrix
 
-
 # === 1. Text Cleaning Funktion ===
 def clean_text(text):
     """
     Standardisiert Text:
     - Alles klein
     - Entfernt Sonderzeichen und Zahlen
+    - Gibt leeren String zurück bei nicht-Text
     """
+    if not isinstance(text, str):
+        return ""
     text = text.lower()
-    text = re.sub(r'\b\d{5,}\b', 'PHONENUMBER', text)  # NEU: ersetzt Telefonnummern
-    text = re.sub(r'[^a-z\s]', '', text)  # weiterhin alle Sonderzeichen raus
+    text = re.sub(r'\b\d{5,}\b', 'PHONENUMBER', text)  # ersetzt Telefonnummern
+    text = re.sub(r'[^a-z\s]', '', text)  # entfernt Sonderzeichen
     return text
-
 
 # === 2. Evaluation-Funktion ===
 def evaluate_model(model, X_test, y_test, label_names=["Ham", "Spam"], model_name="Modell"):
@@ -40,7 +39,6 @@ def evaluate_model(model, X_test, y_test, label_names=["Ham", "Spam"], model_nam
     plt.ylabel("Tatsächlich")
     plt.tight_layout()
     plt.show()
-
 
 # === 3. Beispielvorhersage für neuen Text ===
 def predict_and_print(model, vectorizer, raw_text, label_names=["Ham", "Spam"]):
